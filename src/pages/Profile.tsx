@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
 import { useLocation } from "wouter"
 import {
   Bell,
@@ -15,17 +15,20 @@ import {
   Settings2,
   ShieldCheck,
   Sparkles,
+  Loader2,
 } from "lucide-react"
 
 import AppLayout from "@/components/layout/AppLayout"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { useAuth } from "@/hooks/useAuth"
+import { toast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
+import { profileService } from "@/services/profileService"
 
 type ProfileForm = {
   prenom: string
@@ -44,6 +47,13 @@ function Profile() {
   const [message, setMessage] = useState("")
   const [saving, setSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarError, setAvatarError] = useState("")
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [dragActive, setDragActive] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [profile, setProfile] = useState<ProfileForm>({
     prenom: "",
     nom: "",
@@ -71,7 +81,7 @@ function Profile() {
         // Fetch the profile row matching the current authenticated user
         const { data, error } = await supabase
           .from("profiles")
-          .select("first_name,last_name,phone,city,address,role")
+          .select("first_name,last_name,phone,city,address,role,avatar_url")
           .eq("user_id", user.id)
           .maybeSingle()
 
@@ -82,6 +92,7 @@ function Profile() {
 
         if (data) {
           if (!mounted) return
+          setAvatarUrl((data.avatar_url as string) || null)
           setProfile({
             prenom: (data.first_name as string) || "",
             nom: (data.last_name as string) || "",
@@ -155,6 +166,126 @@ function Profile() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const setPreviewForFile = (file: File) => {
+    if (avatarPreviewUrl) {
+      URL.revokeObjectURL(avatarPreviewUrl)
+    }
+    setAvatarPreviewUrl(URL.createObjectURL(file))
+  }
+
+  const clearPreview = () => {
+    if (avatarPreviewUrl) {
+      URL.revokeObjectURL(avatarPreviewUrl)
+      setAvatarPreviewUrl(null)
+    }
+  }
+
+  const handleNewAvatarFile = (file: File) => {
+    setAvatarError("")
+    const validationError = profileService.validateAvatarFile(file)
+    if (validationError) {
+      clearPreview()
+      setAvatarFile(null)
+      setAvatarError(validationError)
+      return
+    }
+    setAvatarFile(file)
+    setPreviewForFile(file)
+  }
+
+  const handleAvatarFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null
+    if (!file) return
+    handleNewAvatarFile(file)
+    event.target.value = ""
+  }
+
+  const handleAvatarDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setDragActive(true)
+  }
+
+  const handleAvatarDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setDragActive(false)
+  }
+
+  const handleAvatarDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setDragActive(false)
+    const file = event.dataTransfer.files?.[0] ?? null
+    if (!file) return
+    handleNewAvatarFile(file)
+  }
+
+  const resizeAndCropToSquare = async (file: File): Promise<File> => {
+    const imageBitmap = await createImageBitmap(file)
+    const size = Math.min(imageBitmap.width, imageBitmap.height)
+    const sx = Math.floor((imageBitmap.width - size) / 2)
+    const sy = Math.floor((imageBitmap.height - size) / 2)
+    const targetSize = 512
+
+    const canvas = document.createElement("canvas")
+    canvas.width = targetSize
+    canvas.height = targetSize
+    const ctx = canvas.getContext("2d")
+    if (!ctx) throw new Error("Impossible de préparer l'image pour l'envoi.")
+
+    ctx.drawImage(imageBitmap, sx, sy, size, size, 0, 0, targetSize, targetSize)
+
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, file.type || "image/png", 0.92)
+    })
+
+    if (!blob) {
+      throw new Error("Impossible de générer l'image redimensionnée.")
+    }
+
+    const extension = file.name.split(".").pop() ?? "png"
+    return new File([blob], `avatar.${extension}`, { type: blob.type })
+  }
+
+  const handleAvatarUpload = async () => {
+    if (!avatarFile) {
+      setAvatarError("Sélectionnez une image avant de l'envoyer.")
+      return
+    }
+    if (!user) {
+      setAvatarError("Utilisateur non authentifié.")
+      return
+    }
+
+    setAvatarError("")
+    setUploadingAvatar(true)
+
+    try {
+      const preparedFile = await resizeAndCropToSquare(avatarFile)
+      const uploadedUrl = await profileService.uploadAvatar(user.id, preparedFile)
+      setAvatarUrl(uploadedUrl)
+      setAvatarFile(null)
+      clearPreview()
+      toast({
+        title: "Photo de profil mise à jour",
+        description: "Votre avatar a bien été enregistré.",
+      })
+    } catch (err) {
+      setAvatarError(
+        err instanceof Error
+          ? err.message
+          : "Erreur lors de l'envoi de la photo de profil."
+      )
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
+  const handleChangeAvatarClick = () => {
+    fileInputRef.current?.click()
   }
 
   const handleLogout = () => {
@@ -240,14 +371,58 @@ function Profile() {
           <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
             <Card className="rounded-[24px] border border-[#E5E7EB] bg-white shadow-sm">
               <CardContent className="p-6">
-                <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                  <Avatar className="h-20 w-20 border border-[#E5E7EB]">
-                    <AvatarFallback className="bg-[#EAF2F6] text-lg font-semibold text-[#2678D1]">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
+                <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-start">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handleAvatarFileSelect}
+                  />
 
-                  <div>
+                  {avatarUrl ? (
+                  <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white">
+                    <img
+                      src={avatarUrl}
+                      alt="Photo de profil"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className={`group relative flex h-32 w-32 cursor-pointer items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed bg-[#F9FAFB] transition ${
+                      dragActive
+                        ? "border-[#2678D1] bg-[#EFF6FF]"
+                        : "border-[#E5E7EB] bg-white"
+                    }`}
+                    onDragOver={handleAvatarDragOver}
+                    onDragLeave={handleAvatarDragLeave}
+                    onDrop={handleAvatarDrop}
+                    onClick={handleChangeAvatarClick}
+                  >
+                    {avatarPreviewUrl ? (
+                      <img
+                        src={avatarPreviewUrl}
+                        alt="Aperçu de la nouvelle photo"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <Avatar className="h-24 w-24 border border-[#E5E7EB] bg-[#EAF2F6]">
+                        <AvatarFallback className="text-lg font-semibold text-[#2678D1]">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-1 bg-white/80 p-2 text-center text-xs text-gray-500 backdrop-blur-sm">
+                      <span className="font-medium text-[#1F2937]">
+                        {dragActive ? "Relâchez pour importer" : "Glissez-déposez ou cliquez"}
+                      </span>
+                      <span>JPG, PNG, WEBP • max 5 Mo</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex-1 min-w-0">
                     <h2 className="text-xl font-semibold text-[#1F2937]">
                       {profile.prenom} {profile.nom}
                     </h2>
@@ -267,6 +442,36 @@ function Profile() {
                         {profile.ville}
                       </div>
                     </div>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <Button
+                        type="button"
+                        onClick={handleChangeAvatarClick}
+                        variant="outline"
+                        className="rounded-full border-[#D1D5DB] text-[#4B5563]"
+                        disabled={uploadingAvatar}
+                      >
+                        {uploadingAvatar ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Téléchargement...
+                          </>
+                        ) : (
+                          "Changer la photo"
+                        )}
+                      </Button>
+                      {avatarFile && !uploadingAvatar && (
+                        <Button
+                          type="button"
+                          onClick={handleAvatarUpload}
+                          className="rounded-full bg-[#2678D1] text-white hover:bg-[#1E63AF]"
+                        >
+                          Enregistrer la photo
+                        </Button>
+                      )}
+                    </div>
+                    {avatarError && (
+                      <p className="mt-2 text-xs text-red-500">{avatarError}</p>
+                    )}
                     <p className="mt-3 text-sm text-gray-500">{profile.adresse}</p>
                   </div>
                 </div>

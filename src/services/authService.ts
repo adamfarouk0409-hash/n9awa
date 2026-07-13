@@ -3,6 +3,8 @@ import { supabase } from "@/lib/supabase";
 
 function mapSupabaseUserToUser(su: any): User {
   const metadata = (su?.user_metadata ?? su?.user_metadata) ?? su?.raw_user_meta_data ?? {};
+  const rawRole = (metadata?.role ?? "client") as User["role"];
+
   return {
     id: su.id,
     prenom: (metadata?.first_name ?? metadata?.prenom ?? "") as string,
@@ -10,7 +12,7 @@ function mapSupabaseUserToUser(su: any): User {
     email: su.email ?? "",
     telephone: (metadata?.telephone ?? "") as string,
     ville: (metadata?.ville ?? "") as string,
-    role: (metadata?.role ?? "client") as "client" | "professionnelle" | "admin",
+    role: rawRole,
     createdAt: (su.created_at ?? new Date().toISOString()) as string,
   } as User;
 }

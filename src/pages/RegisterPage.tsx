@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,6 +11,7 @@ import { UserTypeSelector } from "@/components/auth/UserTypeSelector";
 import { useAuth } from "@/hooks/useAuth";
 import { cities } from "@/data/cities";
 import { serviceNames, availabilityOptions } from "@/data/services";
+import { profileService } from "@/services/profileService";
 import type { UserRole } from "@/types/user";
 
 const registerSchema = z
@@ -58,6 +59,9 @@ function RegisterForm({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState("");
   const [serverError, setServerError] = useState("");
 
   const {
@@ -74,10 +78,39 @@ function RegisterForm({
       prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
     );
 
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setAvatarError("");
+    const file = event.target.files?.[0] ?? null;
+    if (!file) {
+      setAvatarFile(null);
+      setAvatarPreview(null);
+      return;
+    }
+
+    const validationError = profileService.validateAvatarFile(file);
+    if (validationError) {
+      setAvatarFile(null);
+      setAvatarPreview(null);
+      setAvatarError(validationError);
+      return;
+    }
+
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+  };
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreview) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    };
+  }, [avatarPreview]);
+
   const onSubmit = async (data: RegisterFormData) => {
     setServerError("");
     try {
-      await authRegister({
+      const user = await authRegister({
         prenom: data.prenom,
         nom: data.nom,
         email: data.email,
@@ -86,10 +119,24 @@ function RegisterForm({
         ville: data.ville,
         role,
         experience: data.experience ? Number(data.experience) : undefined,
-        services: role === "professionnelle" ? selectedServices : undefined,
+        services: role === "cleaner" ? selectedServices : undefined,
         availability: data.availability,
         biography: data.biography,
       });
+
+      if (role === "cleaner" && avatarFile) {
+        try {
+          await profileService.uploadAvatar(user.id, avatarFile);
+        } catch (uploadError) {
+          setServerError(
+            uploadError instanceof Error
+              ? uploadError.message
+              : "Impossible de télécharger la photo de profil."
+          );
+          return;
+        }
+      }
+
       navigate("/");
     } catch (e) {
       setServerError(e instanceof Error ? e.message : "Une erreur est survenue.");
@@ -245,7 +292,7 @@ function RegisterForm({
 
         {/* Professionnelle extra fields */}
         <AnimatePresence>
-          {role === "professionnelle" && (
+          {role === "cleaner" && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
@@ -321,6 +368,49 @@ function RegisterForm({
                     placeholder="Décrivez votre expérience et vos points forts..."
                     className={inputClass(false) + " resize-none"}
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#1F2937] mb-3">
+                    Photo de profil
+                  </label>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <div className="h-24 w-24 overflow-hidden rounded-3xl border border-[#E5E7EB] bg-[#F9FAFB]">
+                      {avatarPreview ? (
+                        <img
+                          src={avatarPreview}
+                          alt="Aperçu de la photo de profil"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
+                          Aucune photo sélectionnée
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <input
+                        id="avatar"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={handleAvatarChange}
+                        className="sr-only"
+                      />
+                      <label
+                        htmlFor="avatar"
+                        className="inline-flex cursor-pointer items-center justify-center rounded-full border border-[#D1D5DB] bg-white px-4 py-2 text-sm font-medium text-[#2678D1] hover:border-[#1E63AF] hover:text-[#1E63AF] transition"
+                      >
+                        Choisir une photo
+                      </label>
+                      <p className="text-xs text-gray-500">
+                        JPG, PNG ou WEBP — maximum 5 Mo.
+                      </p>
+                      {avatarError && (
+                        <p className="text-xs text-red-500">{avatarError}</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>

@@ -15,7 +15,7 @@ const OPTIONS = [
     desc: "Je cherche une femme de ménage.",
   },
   {
-    role: "professionnelle" as UserRole,
+    role: "cleaner" as UserRole,
     icon: "🧹",
     label: "Professionnelle",
     desc: "Je souhaite proposer mes services.",

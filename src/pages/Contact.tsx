@@ -1,19 +1,24 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
-import { MapPin, Phone, Mail, Instagram, CheckCircle2 } from "lucide-react";
-import { AuthLayout } from "@/components/auth/AuthLayout";
+import { Phone, Mail, Instagram, CheckCircle2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { contactService } from "@/services/contactService";
+import type { ContactMessageInsert } from "@/types/contact";
 
 export default function Contact() {
+  const { user } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const validate = () => {
     const nextErrors: Record<string, string> = {};
@@ -26,10 +31,39 @@ export default function Contact() {
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setSubmitError(null);
+
     if (!validate()) return;
-    setSubmitted(true);
+
+    setIsSubmitting(true);
+
+    const payload: ContactMessageInsert = {
+      user_id: user?.id ?? null,
+      name: fullName.trim(),
+      email: email.trim(),
+      subject: subject.trim(),
+      message: message.trim(),
+    };
+
+    try {
+      await contactService.submitMessage(payload);
+      setSubmitted(true);
+      setFullName("");
+      setEmail("");
+      setSubject("");
+      setMessage("");
+      setErrors({});
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Une erreur est survenue lors de l'envoi de votre message."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -108,6 +142,11 @@ export default function Contact() {
               </motion.div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
+                {submitError ? (
+                  <div className="rounded-3xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                    {submitError}
+                  </div>
+                ) : null}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-sm font-semibold text-[#1F2937]">Nom complet</label>
@@ -150,8 +189,12 @@ export default function Contact() {
                   {errors.message && <p className="mt-2 text-xs text-red-500">{errors.message}</p>}
                 </div>
 
-                <Button type="submit" className="w-full rounded-full bg-[#2678D1] text-white hover:bg-[#1E85D6]">
-                  Envoyer le message
+                <Button
+                  type="submit"
+                  className="w-full rounded-full bg-[#2678D1] text-white hover:bg-[#1E85D6]"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Envoi en cours..." : "Envoyer le message"}
                 </Button>
               </form>
             )}

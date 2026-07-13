@@ -23,7 +23,7 @@ export function Navbar() {
           { label: "Réservations", href: "/reservations" },
           { label: "Notifications", href: "/notifications" },
         ]),
-    ...(user?.role === "professionnelle" && isAuthenticated
+    ...(user?.role === "cleaner" && isAuthenticated
       ? [{ label: "Tableau de bord", href: "/dashboard" }]
       : []),
   ];
@@ -132,7 +132,7 @@ export function Navbar() {
                       {[
                         { icon: <User size={14} />, label: "Mon profil", action: () => { setDropdownOpen(false); navigate("/profil"); } },
                         { icon: <User size={14} />, label: "Paramètres", action: () => { setDropdownOpen(false); navigate("/parametres"); } },
-                        ...(user?.role === "professionnelle"
+                        ...(user?.role === "cleaner"
                           ? [{ icon: <LayoutDashboard size={14} />, label: "Tableau de bord", action: () => { setDropdownOpen(false); navigate("/dashboard"); } }]
                           : []),
                       ].map((item) => (
