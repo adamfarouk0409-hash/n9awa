@@ -4,6 +4,30 @@ const STORAGE_BUCKET = "avatars";
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
+const convertFileToWebp = async (file: File): Promise<File> => {
+  const imageBitmap = await createImageBitmap(file);
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("Impossible de préparer l'image pour l'envoi.");
+  }
+
+  canvas.width = imageBitmap.width;
+  canvas.height = imageBitmap.height;
+  context.drawImage(imageBitmap, 0, 0);
+
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, "image/webp", 0.92);
+  });
+
+  if (!blob) {
+    throw new Error("Impossible de convertir l'image au format WebP.");
+  }
+
+  return new File([blob], "avatar.webp", { type: "image/webp" });
+};
+
 export const profileService = {
   validateAvatarFile(file: File) {
     if (!ALLOWED_TYPES.includes(file.type)) {
@@ -35,43 +59,19 @@ export const profileService = {
   },
 
   async uploadAvatar(userId: string, file: File) {
-    const fileExt = file.name.split(".").pop()?.toLowerCase() ?? "png";
-    const filePath = `${userId}/${crypto.randomUUID()}.${fileExt}`;
+    const webpFile = await convertFileToWebp(file);
+    const filePath = `${userId}/avatar.webp`;
 
     const { error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(filePath, file, {
+      .upload(filePath, webpFile, {
         cacheControl: "3600",
-        upsert: false,
+        upsert: true,
+        contentType: "image/webp",
       });
 
     if (uploadError) {
       throw new Error(uploadError.message || "Impossible de télécharger l'image de profil.");
-    }
-
-    const { data: existingProfile, error: existingProfileError } = await supabase
-      .from("profiles")
-      .select("avatar_path")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (existingProfileError) {
-      throw new Error(existingProfileError.message || "Impossible de récupérer l'ancien chemin d'avatar.");
-    }
-
-    const currentAvatarPath = existingProfile?.avatar_path as string | null
-    if (currentAvatarPath) {
-      const { error: deleteError } = await supabase
-        .storage
-        .from(STORAGE_BUCKET)
-        .remove([currentAvatarPath])
-
-      if (deleteError) {
-        const message = deleteError.message || "Erreur lors de la suppression de l'ancienne photo."
-        if (!/not found|404|n'existe pas|pas trouvé|No such file/i.test(message)) {
-          throw new Error(message)
-        }
-      }
     }
 
     const urlResult = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(filePath);
