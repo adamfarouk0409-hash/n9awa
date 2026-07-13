@@ -51,28 +51,25 @@ export const profileService = {
 
     const { data: existingProfile, error: existingProfileError } = await supabase
       .from("profiles")
-      .select("avatar_url")
+      .select("avatar_path")
       .eq("user_id", userId)
       .maybeSingle();
 
     if (existingProfileError) {
-      throw new Error(existingProfileError.message || "Impossible de récupérer l'avatar existant.");
+      throw new Error(existingProfileError.message || "Impossible de récupérer l'ancien chemin d'avatar.");
     }
 
-    const currentAvatarUrl = existingProfile?.avatar_url as string | null
-    if (currentAvatarUrl) {
-      const existingPath = profileService.getStoragePathFromPublicUrl(currentAvatarUrl)
-      if (existingPath) {
-        const { error: deleteError } = await supabase
-          .storage
-          .from(STORAGE_BUCKET)
-          .remove([existingPath])
+    const currentAvatarPath = existingProfile?.avatar_path as string | null
+    if (currentAvatarPath) {
+      const { error: deleteError } = await supabase
+        .storage
+        .from(STORAGE_BUCKET)
+        .remove([currentAvatarPath])
 
-        if (deleteError) {
-          const message = deleteError.message || "Erreur lors de la suppression de l'ancienne photo."
-          if (!/not found|404|n'existe pas|pas trouvé|No such file/i.test(message)) {
-            throw new Error(message)
-          }
+      if (deleteError) {
+        const message = deleteError.message || "Erreur lors de la suppression de l'ancienne photo."
+        if (!/not found|404|n'existe pas|pas trouvé|No such file/i.test(message)) {
+          throw new Error(message)
         }
       }
     }
@@ -87,7 +84,7 @@ export const profileService = {
     const { count, error: profileError } = await supabase
       .from("profiles")
       .update({
-        avatar_url: avatarUrl,
+        avatar_path: filePath,
         avatar_updated_at: new Date().toISOString(),
       })
       .eq("user_id", userId);
@@ -100,6 +97,6 @@ export const profileService = {
       throw new Error("Aucun profil n'a été mis à jour pour l'utilisateur.");
     }
 
-    return avatarUrl;
+    return filePath;
   },
 };

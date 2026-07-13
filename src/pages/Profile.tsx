@@ -47,7 +47,8 @@ function Profile() {
   const [message, setMessage] = useState("")
   const [saving, setSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const STORAGE_BUCKET = "avatars"
+  const [avatarPath, setAvatarPath] = useState<string | null>(null)
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarError, setAvatarError] = useState("")
@@ -69,6 +70,11 @@ function Profile() {
     return `${first}${second}`.toUpperCase()
   }, [profile.nom, profile.prenom])
 
+  const avatarUrl = useMemo(() => {
+    if (!avatarPath) return null
+    return supabase.storage.from(STORAGE_BUCKET).getPublicUrl(avatarPath).data.publicUrl || null
+  }, [avatarPath])
+
   useEffect(() => {
     let mounted = true
 
@@ -81,7 +87,7 @@ function Profile() {
         // Fetch the profile row matching the current authenticated user
         const { data, error } = await supabase
           .from("profiles")
-          .select("first_name,last_name,phone,city,address,role,avatar_url")
+          .select("first_name,last_name,phone,city,address,role,avatar_path")
           .eq("user_id", user.id)
           .maybeSingle()
 
@@ -92,7 +98,7 @@ function Profile() {
 
         if (data) {
           if (!mounted) return
-          setAvatarUrl((data.avatar_url as string) || null)
+          setAvatarPath((data.avatar_path as string) || null)
           setProfile({
             prenom: (data.first_name as string) || "",
             nom: (data.last_name as string) || "",
@@ -265,8 +271,8 @@ function Profile() {
 
     try {
       const preparedFile = await resizeAndCropToSquare(avatarFile)
-      const uploadedUrl = await profileService.uploadAvatar(user.id, preparedFile)
-      setAvatarUrl(uploadedUrl)
+      const uploadedPath = await profileService.uploadAvatar(user.id, preparedFile)
+      setAvatarPath(uploadedPath)
       setAvatarFile(null)
       clearPreview()
       toast({

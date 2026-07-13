@@ -13,14 +13,14 @@ CREATE POLICY IF NOT EXISTS update_own_profiles ON public.profiles
   WITH CHECK (user_id = auth.uid());
 
 -- 3) Trigger function that enforces the avatar update interval.
---    It protects both avatar_url and avatar_updated_at.
---    - If avatar_url changes, the previous avatar_updated_at must be NULL
+--    It protects both avatar_path and avatar_updated_at.
+--    - If avatar_path changes, the previous avatar_updated_at must be NULL
 --      or at least 30 days old.
---    - If avatar_url stays the same, avatar_updated_at cannot be changed.
+--    - If avatar_path stays the same, avatar_updated_at cannot be changed.
 CREATE OR REPLACE FUNCTION public.enforce_profile_avatar_update_limit()
 RETURNS trigger AS $$
 BEGIN
-  IF NEW.avatar_url IS DISTINCT FROM OLD.avatar_url THEN
+  IF NEW.avatar_path IS DISTINCT FROM OLD.avatar_path THEN
     IF OLD.avatar_updated_at IS NOT NULL
        AND OLD.avatar_updated_at > now() - interval '30 days' THEN
       RAISE EXCEPTION 'La photo de profil ne peut être modifiée qu\'une fois tous les 30 jours.';
@@ -40,6 +40,6 @@ DROP TRIGGER IF EXISTS enforce_avatar_update_limit ON public.profiles;
 CREATE TRIGGER enforce_avatar_update_limit
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW
-  WHEN (OLD.avatar_url IS DISTINCT FROM NEW.avatar_url
+  WHEN (OLD.avatar_path IS DISTINCT FROM NEW.avatar_path
         OR OLD.avatar_updated_at IS DISTINCT FROM NEW.avatar_updated_at)
   EXECUTE FUNCTION public.enforce_profile_avatar_update_limit();
