@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle, Star, ChevronDown } from "lucide-react";
+import { Check, CheckCircle, Star, ChevronDown } from "lucide-react";
 import { useLocation } from "wouter";
 import { cities } from "@/data/cities";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 const n9awaLogo = "/n9awa_nobg.png";
 
@@ -46,33 +48,49 @@ export function Hero() {
             <div className="bg-white rounded-[20px] p-7 shadow-xl border border-[#E5E7EB]">
               {/* City selector */}
               <div className="relative mb-5">
-                <button
-                  onClick={() => setCityOpen(!cityOpen)}
-                  className="w-full flex items-center justify-between px-5 py-4 border border-[#E5E7EB] rounded-2xl text-left hover:border-[#2678D1] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2678D1]/20"
-                  data-testid="button-city-selector"
-                >
-                  <span className={selectedCity ? "text-[#1F2937] font-medium" : "text-gray-400"}>
-                    {selectedCity || "Choisissez votre ville"}
-                  </span>
-                  <ChevronDown
-                    size={18}
-                    className={`text-gray-400 transition-transform duration-200 ${cityOpen ? "rotate-180" : ""}`}
-                  />
-                </button>
-                {cityOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border border-[#E5E7EB] shadow-xl z-10 overflow-hidden">
-                    {cities.map((city) => (
-                      <button
-                        key={city}
-                        onClick={() => { setSelectedCity(city); setCityOpen(false); }}
-                        className="w-full text-left px-5 py-3 text-sm hover:bg-[#EAF2F6] text-[#1F2937] transition-colors"
-                        data-testid={`option-city-${city.toLowerCase()}`}
-                      >
-                        {city}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <Popover open={cityOpen} onOpenChange={setCityOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between px-5 py-4 border border-[#E5E7EB] rounded-2xl text-left hover:border-[#2678D1] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2678D1]/20"
+                      data-testid="button-city-selector"
+                    >
+                      <span className={selectedCity ? "text-[#1F2937] font-medium" : "text-gray-400"}>
+                        {selectedCity || "Choisissez une ville"}
+                      </span>
+                      <ChevronDown
+                        size={18}
+                        className={`text-gray-400 transition-transform duration-200 ${cityOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    className="w-[var(--radix-popover-trigger-width)] rounded-2xl border border-[#E5E7EB] bg-white p-0 shadow-xl"
+                  >
+                    <Command>
+                      <CommandInput placeholder="Rechercher une ville..." className="h-11 border-0 focus:ring-0" />
+                      <CommandList>
+                        <CommandEmpty className="py-4 text-sm text-gray-500">Aucune ville trouvée.</CommandEmpty>
+                        {cities.map((city) => (
+                          <CommandItem
+                            key={city.id}
+                            value={city.name}
+                            onSelect={() => {
+                              setSelectedCity(city.name);
+                              setCityOpen(false);
+                            }}
+                            className="flex cursor-pointer items-center justify-between px-5 py-3 text-sm text-[#1F2937] hover:bg-[#EAF2F6] data-[selected=true]:bg-[#EAF2F6] data-[selected=true]:text-[#1F2937]"
+                            data-testid={`option-city-${city.name.toLowerCase()}`}
+                          >
+                            <span>{city.name}</span>
+                            {selectedCity === city.name ? <Check size={16} className="text-[#2678D1]" /> : null}
+                          </CommandItem>
+                        ))}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Toggle buttons */}

@@ -15,9 +15,9 @@ function SidebarContent() {
         <h3 className="text-sm font-semibold text-[#1F2937] mb-3">📍 Ville</h3>
         <div className="space-y-2">
           {filterCities.map((city) => (
-            <label key={city} className="flex items-center gap-2.5 cursor-pointer group">
+            <label key={city.id} className="flex items-center gap-2.5 cursor-pointer group">
               <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-[#2678D1] accent-[#2678D1]" />
-              <span className="text-sm text-gray-600 group-hover:text-[#2678D1] transition-colors">{city}</span>
+              <span className="text-sm text-gray-600 group-hover:text-[#2678D1] transition-colors">{city.name}</span>
             </label>
           ))}
         </div>

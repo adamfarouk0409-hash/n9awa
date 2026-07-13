@@ -81,39 +81,44 @@ export default function Contact() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-3xl border border-[#E5E7EB] bg-[#F9FAFB] p-6 min-h-[220px] min-w-0 flex flex-col justify-between">
+                <a
+                  href="tel:+212605802324"
+                  aria-label="Nous appeler"
+                  className="group flex min-h-[220px] min-w-0 cursor-pointer flex-col justify-between rounded-3xl border border-[#E5E7EB] bg-[#F9FAFB] p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-[#2678D1]"
+                >
                   <div>
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#2678D1] shadow-sm">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#2678D1] shadow-sm transition-colors duration-200 group-hover:text-[#1E85D6]">
                       <Phone size={20} />
                     </div>
                     <p className="mt-4 text-sm font-semibold text-[#1F2937]">Téléphone</p>
                   </div>
-                  <a href="tel:+212605802324" className="mt-2 block break-words text-sm text-gray-600 hover:text-[#2678D1]">
-                    +212 605802324
-                  </a>
-                </div>
-                <div className="rounded-3xl border border-[#E5E7EB] bg-[#F9FAFB] p-6 min-h-[220px] min-w-0 flex flex-col justify-between">
+                </a>
+                <a
+                  href="mailto:n9awa.ma@gmail.com"
+                  aria-label="Nous envoyer un e-mail"
+                  className="group flex min-h-[220px] min-w-0 cursor-pointer flex-col justify-between rounded-3xl border border-[#E5E7EB] bg-[#F9FAFB] p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-[#2678D1]"
+                >
                   <div>
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#2678D1] shadow-sm">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#2678D1] shadow-sm transition-colors duration-200 group-hover:text-[#1E85D6]">
                       <Mail size={20} />
                     </div>
                     <p className="mt-4 text-sm font-semibold text-[#1F2937]">Email</p>
                   </div>
-                  <a href="mailto:n9awa.ma@gmail.com" className="mt-2 block break-words text-sm text-gray-600 hover:text-[#2678D1]">
-                    n9awa.ma@gmail.com
-                  </a>
-                </div>
-                <div className="rounded-3xl border border-[#E5E7EB] bg-[#F9FAFB] p-6 min-h-[220px] min-w-0 flex flex-col justify-between">
+                </a>
+                <a
+                  href="https://www.instagram.com/n9awa_ma"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Visiter notre Instagram"
+                  className="group flex min-h-[220px] min-w-0 cursor-pointer flex-col justify-between rounded-3xl border border-[#E5E7EB] bg-[#F9FAFB] p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-[#2678D1]"
+                >
                   <div>
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#2678D1] shadow-sm">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#2678D1] shadow-sm transition-colors duration-200 group-hover:text-[#1E85D6]">
                       <Instagram size={20} />
                     </div>
                     <p className="mt-4 text-sm font-semibold text-[#1F2937]">Instagram</p>
                   </div>
-                  <a href="https://www.instagram.com/n9awa_ma" target="_blank" rel="noreferrer" className="mt-2 block break-words text-sm text-gray-600 hover:text-[#2678D1]">
-                    @n9awa_ma
-                  </a>
-                </div>
+                </a>
               </div>
 
             </div>

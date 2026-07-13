@@ -282,8 +282,8 @@ function RegisterForm({
           >
             <option value="">Choisissez une ville</option>
             {cities.map((c) => (
-              <option key={c} value={c}>
-                {c}
+              <option key={c.id} value={c.name}>
+                {c.name}
               </option>
             ))}
           </select>
